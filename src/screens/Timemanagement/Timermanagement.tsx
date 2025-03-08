@@ -11,7 +11,6 @@ const TimerManagementScreen = (props) => {
   const [originalDuration, setOriginalDuration] = useState(props.route.params.timer?.duration);
   const [runningTimers, setRunningTimers] = useState(false);
   const currentProgress = timer.duration / originalDuration
-  console.log(currentProgress)
 
   const startTimer = async () => {
     const storedTimers = JSON.parse(await AsyncStorage.getItem('timers') || "[]");
