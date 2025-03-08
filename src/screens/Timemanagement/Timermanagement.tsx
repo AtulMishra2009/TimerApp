@@ -1,75 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Button, StyleSheet } from 'react-native';
+import * as Progress from 'react-native-progress';
+import { screenWidth } from '../../utility/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let interval: any
+let interval;
 
 const TimerManagementScreen = (props) => {
   const [timer, setTimer] = useState(props.route.params.timer);
-  const [originalDuration, setOriginalDuration] = useState(props.route.params.timer?.duration)
+  const [originalDuration, setOriginalDuration] = useState(props.route.params.timer?.duration);
   const [runningTimers, setRunningTimers] = useState(false);
+  const currentProgress = timer.duration / originalDuration
+  console.log(currentProgress)
 
   const startTimer = async () => {
-    const storedTimers = JSON.parse(await AsyncStorage.getItem('timers') || "");
-    clearInterval(interval)
+    const storedTimers = JSON.parse(await AsyncStorage.getItem('timers') || "[]");
+    clearInterval(interval);
     interval = setInterval(() => {
-        setTimer(prev => {
-            console.log(prev)
-            if (prev.duration === 0) {
-                clearInterval(interval)
-                setRunningTimers(false)
-                saveInStorage(storedTimers, "status", "completed")
-                return {...prev, status: "completed"}
-            }
-            saveInStorage(storedTimers, "duration", prev.duration - 1)
-            return {
-                ...prev, 
-                duration: prev.duration - 1
-            }
-        })
-    }, 1000)
-    setRunningTimers(true)
+      setTimer((prev) => {
+        if (prev.duration === 0) {
+          clearInterval(interval);
+          setRunningTimers(false);
+          saveInStorage(storedTimers, 'status', 'completed');
+          return { ...prev, status: 'completed' };
+        }
+        saveInStorage(storedTimers, 'duration', prev.duration - 1);
+        return { ...prev, duration: prev.duration - 1 };
+      });
+    }, 1000);
+    setRunningTimers(true);
   };
 
   const saveInStorage = (timers, key, val) => {
-    const newTimer = [...timers]
-    const findIndex = newTimer.findIndex(val => val.id === timer.id)
-    console.log(timer, newTimer)
-    newTimer[findIndex][key] = val
-    AsyncStorage.setItem('timers', JSON.stringify(newTimer));
-  }
+    const newTimer = [...timers];
+    const findIndex = newTimer.findIndex((t) => t.id === timer.id);
+    if (findIndex !== -1) {
+      newTimer[findIndex][key] = val;
+      AsyncStorage.setItem('timers', JSON.stringify(newTimer));
+    }
+  };
 
   const pauseTimer = async () => {
-
     if (runningTimers) {
-      clearInterval(interval)
-      setRunningTimers(false)
-      setTimer(prev => ({...prev, status: "paused"}))
+      clearInterval(interval);
+      setRunningTimers(false);
+      setTimer((prev) => ({ ...prev, status: 'paused' }));
     } else {
-        startTimer()
-        setRunningTimers(true)
+      startTimer();
+      setRunningTimers(true);
     }
   };
 
   const resetTimer = async () => {
-    const storedTimers = await AsyncStorage.getItem('timers');
     pauseTimer();
-    setTimer({...timer, duration: originalDuration})
-    saveInStorage(storedTimers, "duration", originalDuration)
+    setTimer({ ...timer, duration: originalDuration });
+    saveInStorage(await AsyncStorage.getItem('timers'), 'duration', originalDuration);
   };
+
+  const progress = timer.duration / originalDuration;
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Timer Management</Text>
-          <View style={styles.timerItem}>
-            <Text style={styles.timerText}>{timer.name} - {timer.duration}s</Text>
-            <Text>Status: {timer.status}</Text>
-            <View style={styles.buttonRow}>
-              <Button title="Start" onPress={() => startTimer()} disabled={runningTimers} />
-              <Button title="Pause" onPress={() => pauseTimer()} disabled={!runningTimers} />
-              <Button title="Reset" onPress={() => resetTimer()} />
-            </View>
-          </View>
+      <View style={styles.timerItem}>
+        <Text style={styles.timerText}>{timer.name} - {timer.duration}s</Text>
+        <Text>Status: {timer.status}</Text>
+        <Progress.Bar progress={currentProgress} width={screenWidth - 68} />
+        <View style={styles.buttonRow}>
+          <Button title="Start" onPress={startTimer} disabled={runningTimers} />
+          <Button title="Pause" onPress={pauseTimer} disabled={!runningTimers} />
+          <Button title="Reset" onPress={resetTimer} />
+        </View>
+      </View>
     </View>
   );
 };
